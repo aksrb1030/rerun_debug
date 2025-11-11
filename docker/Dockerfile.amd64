@@ -1,38 +1,35 @@
 # syntax=docker/dockerfile:1
-FROM --platform=linux/amd64 ubuntu:22.04
+ARG ROS_DISTRO=humble
+FROM --platform=linux/amd64 ros:${ROS_DISTRO}-ros-base
+ARG ROS_DISTRO
 
-ARG DEBIAN_FRONTEND=noninteractive
-ARG RERUN_VERSION=0.15.0
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
         ca-certificates \
-        cmake \
+        curl \
         git \
-        ninja-build \
-        pkg-config \
-        python3 \
+        locales \
         python3-pip \
-        wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Install the Rerun C++ SDK
-RUN mkdir -p /opt/rerun \
-    && wget -qO /tmp/rerun_cpp_sdk.tar.gz \
-        "https://github.com/rerun-io/rerun/releases/download/v${RERUN_VERSION}/rerun_cpp_sdk-${RERUN_VERSION}-linux-x86_64.tar.gz" \
-    && tar -xzf /tmp/rerun_cpp_sdk.tar.gz -C /opt/rerun --strip-components=1 \
-    && rm /tmp/rerun_cpp_sdk.tar.gz
+RUN locale-gen en_US en_US.UTF-8
+ENV LANG=en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8
 
-ENV CMAKE_PREFIX_PATH=/opt/rerun/cpp:$CMAKE_PREFIX_PATH
-
-# Install the Rerun viewer CLI (optional but handy for debugging)
-RUN pip3 install --no-cache-dir rerun-sdk==${RERUN_VERSION}
+RUN pip3 install --no-cache-dir rerun-sdk
 
 WORKDIR /app
 COPY . /app
 
-RUN cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
-    && cmake --build build
+RUN . /opt/ros/${ROS_DISTRO}/setup.sh \
+    && cmake -S /app -B /app/build -DCMAKE_BUILD_TYPE=Release \
+    && cmake --build /app/build --target p13_rerun_bridge
 
-CMD ["./build/sensor_visualizer"]
+ENV ROS_DISTRO=${ROS_DISTRO}
+ENV P13_NAME=P13
+ENV ROS_WORKSPACE=""
+
+CMD ["bash", "-lc", "source /opt/ros/${ROS_DISTRO}/setup.bash && if [ -n \"${ROS_WORKSPACE}\" ]; then source ${ROS_WORKSPACE}/install/setup.bash; fi && /app/build/p13_rerun_bridge"]

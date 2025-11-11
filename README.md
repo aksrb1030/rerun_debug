@@ -1,72 +1,87 @@
-# Sensor Visualization with Rerun
+# ROS 2 Topic Visualization with Rerun
 
-이 프로젝트는 [Rerun](https://www.rerun.io/) C++ SDK를 이용해 가상의 센서 데이터를 실시간으로 시각화하는 예제입니다. 온도, 위치, 속도 정보를 생성해 Rerun Viewer로 스트리밍합니다.
+`p13_rerun_bridge`는 C++로 작성된 ROS 2 노드로, P13 계열 차량에서 사용하는 주요 토픽을 [Rerun](https://www.rerun.io/) Viewer에 실시간으로 전달합니다. 센서 계열 메시지(`sensor_msgs`)는 3D 시각화로, 그 외 메시지는 시계열 그래프로 자동 분류합니다.
 
-## 요구사항
+`P13_NAME` 환경 변수로 차량 접두사(예: `P13`, `P13B`, ...)를 지정하면 `/P13/...`로 고정된 토픽 이름을 해당 값으로 치환합니다.
 
-- C++20을 지원하는 컴파일러 (예: GCC 12+, Clang 15+)
-- CMake 3.21 이상
-- Rerun C++ SDK (패키지 이름: `rerun_sdk`). `vcpkg`, `pip install rerun-sdk`, 또는 직접 빌드한 SDK의 CMake 패키지를 사용해 설치할 수 있습니다.
-- Rerun Viewer (`rerun` CLI)
-
-## 빌드 방법
+## 빌드
 
 ```bash
+source /opt/ros/humble/setup.bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-`rerun_sdk` 패키지가 표준 CMake 경로에 설치되어 있지 않은 경우 `CMAKE_PREFIX_PATH`를 추가로 지정해야 할 수 있습니다.
+빌드가 끝나면 실행 파일 `build/p13_rerun_bridge`가 생성됩니다.
 
-예시:
-
-```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_PREFIX_PATH=/path/to/rerun-sdk
-cmake --build build
-```
-
-## 실행 방법
-
-먼저 Rerun Viewer를 실행합니다.
+## 실행
 
 ```bash
-rerun
+source /opt/ros/humble/setup.bash
+./build/p13_rerun_bridge
 ```
 
-다음으로 예제 프로그램을 실행하면, 가상의 3개 센서에 대한 위치·속도·온도 정보가 스트리밍되어 Viewer에서 확인할 수 있습니다.
+환경 변수
 
-```bash
-./build/sensor_visualizer
-```
+| 변수 | 설명 | 기본값 |
+| ---- | ---- | ------ |
+| `P13_NAME` | `/P13/` 접두사를 대체할 차량 이름 | `P13` |
+| `RERUN_MODE` | `connect`(기본) 또는 `spawn`. `connect`는 지정한 Viewer 서버에 접속 | `connect` |
+| `RERUN_SERVER` | `connect` 모드에서 사용할 Rerun 서버 주소 | `127.0.0.1:9876` |
+| `ROS_WORKSPACE` | Docker Compose에서 추가로 소싱할 ROS 2 오버레이 워크스페이스 경로 | 빈 문자열 |
 
-프로그램은 약 300프레임 동안 데이터를 전송한 후 종료됩니다. Viewer에서 센서 위치(`sensors/positions`), 속도 벡터(`sensors/velocity`), 그리고 온도 로그(`sensors/temperatures`)를 확인할 수 있습니다.
+## 요구사항
 
-## Docker 이미지 빌드
+- ROS 2 Humble 이상 (노드 실행)
+- rerun C++ SDK (`rerun::rerun` 라이브러리)
+- Rerun Viewer (`rerun` CLI)
 
-로컬 환경에서 의존성을 직접 설치하고 싶지 않은 경우 제공된 Dockerfile을 이용해 애플리케이션을 빌드할 수 있습니다. 아키텍처별로 Dockerfile이 분리되어 있으니, 사용 중인 플랫폼에 맞는 파일을 선택하세요.
+## Docker 이미지 빌드 및 실행
+
+ROS 2와 Rerun SDK를 컨테이너에서 바로 사용할 수 있도록 아키텍처별 Dockerfile과 docker-compose 파일을 제공합니다. 두 Dockerfile은
+공식 `ros:${ROS_DISTRO}-ros-base` 이미지를 기반으로 하여 `/opt/ros/${ROS_DISTRO}` 환경이 즉시 구성된 상태에서 빌드가 진행됩니다.
 
 ### AMD64 (x86_64)
 
 ```bash
-docker build -f docker/Dockerfile.amd64 -t rerun-sensor-visualizer:amd64 .
+docker build -f docker/Dockerfile.amd64 -t rerun-p13-bridge:amd64 .
 ```
 
 ### ARM64 (aarch64)
 
 ```bash
-docker build -f docker/Dockerfile.arm64 -t rerun-sensor-visualizer:arm64 .
+docker build -f docker/Dockerfile.arm64 -t rerun-p13-bridge:arm64 .
 ```
 
-빌드가 완료되면 다음과 같이 컨테이너를 실행할 수 있습니다.
+이미지를 실행하려면 다음과 같이 실행합니다.
 
 ```bash
-docker run --rm rerun-sensor-visualizer:amd64
+docker run --rm --net=host \
+  -e P13_NAME=P13B \
+  -e RERUN_MODE=connect \
+  -e RERUN_SERVER=host.docker.internal:9876 \
+  rerun-p13-bridge:amd64
 ```
 
-ARM64 이미지도 동일한 명령으로 실행할 수 있으며, 필요에 따라 태그만 `arm64`로 바꿔주면 됩니다.
+ARM64 이미지는 태그만 `arm64`로 바꾸면 동일한 명령으로 실행할 수 있습니다.
 
-### Docker 컨테이너 안에서 Rerun Viewer까지 실행하고 싶은 경우
+### Docker Compose
+
+AMD64
+
+```bash
+docker compose -f docker/docker-compose.amd64.yml up --build
+```
+
+ARM64
+
+```bash
+docker compose -f docker/docker-compose.arm64.yml up --build
+```
+
+Compose 실행 시 `P13_NAME`, `RERUN_MODE`, `RERUN_SERVER`, `ROS_WORKSPACE`, `ROS_DISTRO` 등의 환경 변수를 `.env` 파일이나 셸 변수로 전달해 동작을 조정할 수 있습니다.
+
+### Docker 컨테이너 안에서 Rerun Viewer 실행
 
 GUI 애플리케이션인 Rerun Viewer를 Docker 안에서 실행하려면, 호스트의 디스플레이 서버에 접근할 수 있도록 몇 가지 추가 설정이 필요합니다.
 
@@ -80,14 +95,14 @@ GUI 애플리케이션인 Rerun Viewer를 Docker 안에서 실행하려면, 호�
    docker run --rm \
      -e DISPLAY=$DISPLAY \
      -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
-     rerun-sensor-visualizer:amd64 rerun
+     rerun-p13-bridge:amd64 rerun
    ```
 
    위 명령은 컨테이너 안에서 `rerun` CLI를 실행해 Viewer를 띄웁니다. 필요하다면 `--device /dev/dri` 등을 추가로 지정해 GPU 가속을 사용할 수 있습니다.
 
-3. Viewer가 실행된 후, 동일한 이미지를 이용해 센서 스트리머를 기동하면 컨테이너 내부에서 데이터를 주고받을 수 있습니다.
+3. Viewer가 실행된 후, 동일한 이미지를 이용해 브리지 컨테이너를 기동하면 컨테이너 내부에서 데이터를 주고받을 수 있습니다.
    ```bash
-   docker run --rm rerun-sensor-visualizer:amd64 ./build/sensor_visualizer
+   docker run --rm rerun-p13-bridge:amd64
    ```
 
-`ros2 bag play`와 같은 다른 도구를 호스트에서 실행하면서, 시각화와 데이터 스트리밍을 모두 컨테이너에 격리시키고 싶을 때 유용한 방법입니다. X11이 아닌 환경(Wayland, macOS, Windows)에서는 각 플랫폼에 맞는 GUI 포워딩 설정이 필요합니다.
+X11이 아닌 환경(Wayland, macOS, Windows)에서는 각 플랫폼에 맞는 GUI 포워딩 설정이 필요합니다.
