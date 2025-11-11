@@ -65,3 +65,29 @@ docker run --rm rerun-sensor-visualizer:amd64
 ```
 
 ARM64 이미지도 동일한 명령으로 실행할 수 있으며, 필요에 따라 태그만 `arm64`로 바꿔주면 됩니다.
+
+### Docker 컨테이너 안에서 Rerun Viewer까지 실행하고 싶은 경우
+
+GUI 애플리케이션인 Rerun Viewer를 Docker 안에서 실행하려면, 호스트의 디스플레이 서버에 접근할 수 있도록 몇 가지 추가 설정이 필요합니다.
+
+1. 호스트에서 X11 접근 권한을 부여합니다 (Linux 기준).
+   ```bash
+   xhost +local:docker
+   ```
+
+2. Viewer를 실행할 때는 다음과 같이 디스플레이 소켓을 공유하고 `DISPLAY` 변수를 전달합니다.
+   ```bash
+   docker run --rm \
+     -e DISPLAY=$DISPLAY \
+     -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+     rerun-sensor-visualizer:amd64 rerun
+   ```
+
+   위 명령은 컨테이너 안에서 `rerun` CLI를 실행해 Viewer를 띄웁니다. 필요하다면 `--device /dev/dri` 등을 추가로 지정해 GPU 가속을 사용할 수 있습니다.
+
+3. Viewer가 실행된 후, 동일한 이미지를 이용해 센서 스트리머를 기동하면 컨테이너 내부에서 데이터를 주고받을 수 있습니다.
+   ```bash
+   docker run --rm rerun-sensor-visualizer:amd64 ./build/sensor_visualizer
+   ```
+
+`ros2 bag play`와 같은 다른 도구를 호스트에서 실행하면서, 시각화와 데이터 스트리밍을 모두 컨테이너에 격리시키고 싶을 때 유용한 방법입니다. X11이 아닌 환경(Wayland, macOS, Windows)에서는 각 플랫폼에 맞는 GUI 포워딩 설정이 필요합니다.
