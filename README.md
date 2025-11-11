@@ -41,3 +41,27 @@ rerun
 ```
 
 프로그램은 약 300프레임 동안 데이터를 전송한 후 종료됩니다. Viewer에서 센서 위치(`sensors/positions`), 속도 벡터(`sensors/velocity`), 그리고 온도 로그(`sensors/temperatures`)를 확인할 수 있습니다.
+
+## Docker 이미지 빌드
+
+로컬 환경에서 의존성을 직접 설치하고 싶지 않은 경우 제공된 Dockerfile을 이용해 애플리케이션을 빌드할 수 있습니다. 아키텍처별로 Dockerfile이 분리되어 있으니, 사용 중인 플랫폼에 맞는 파일을 선택하세요.
+
+### AMD64 (x86_64)
+
+```bash
+docker build -f docker/Dockerfile.amd64 -t rerun-sensor-visualizer:amd64 .
+```
+
+### ARM64 (aarch64)
+
+```bash
+docker build -f docker/Dockerfile.arm64 -t rerun-sensor-visualizer:arm64 .
+```
+
+빌드가 완료되면 다음과 같이 컨테이너를 실행할 수 있습니다.
+
+```bash
+docker run --rm rerun-sensor-visualizer:amd64
+```
+
+ARM64 이미지도 동일한 명령으로 실행할 수 있으며, 필요에 따라 태그만 `arm64`로 바꿔주면 됩니다.
