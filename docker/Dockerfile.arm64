@@ -7,10 +7,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        build-essential \
-        ca-certificates \
-        curl \
-        git \
         locales \
         python3-pip \
     && rm -rf /var/lib/apt/lists/*
@@ -19,52 +15,15 @@ RUN locale-gen en_US en_US.UTF-8
 ENV LANG=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
 
-RUN pip3 install --no-cache-dir rerun-sdk \
-    && python3 - <<'PY'
-import rerun_sdk
-import pathlib
-import shutil
-
-cpp_root = pathlib.Path(rerun_sdk.__file__).resolve().parent / "cpp"
-if not cpp_root.exists():
-    raise SystemExit("rerun SDK C++ resources not found")
-
-dest_prefix = pathlib.Path("/opt/rerun-sdk")
-if dest_prefix.exists():
-    shutil.rmtree(dest_prefix)
-shutil.copytree(cpp_root, dest_prefix)
-
-cmake_src = dest_prefix / "cmake"
-if not cmake_src.exists():
-    raise SystemExit("rerun SDK CMake files missing")
-
-cmake_dest = dest_prefix / "lib" / "cmake" / "rerun_sdk"
-cmake_dest.mkdir(parents=True, exist_ok=True)
-
-for item in cmake_src.iterdir():
-    dest = cmake_dest / item.name
-    if item.is_dir():
-        if dest.exists():
-            shutil.rmtree(dest)
-        shutil.copytree(item, dest)
-    else:
-        shutil.copy2(item, dest)
-PY \
-    && echo "/opt/rerun-sdk/lib" > /etc/ld.so.conf.d/rerun_sdk.conf \
-    && ldconfig
-
-ENV CMAKE_PREFIX_PATH=/opt/rerun-sdk:${CMAKE_PREFIX_PATH}
-ENV LD_LIBRARY_PATH=/opt/rerun-sdk/lib:${LD_LIBRARY_PATH}
+RUN pip3 install --no-cache-dir rerun-sdk
 
 WORKDIR /app
 COPY . /app
 
-RUN . /opt/ros/${ROS_DISTRO}/setup.sh \
-    && cmake -S /app -B /app/build -DCMAKE_BUILD_TYPE=Release \
-    && cmake --build /app/build --target p13_rerun_bridge
-
 ENV ROS_DISTRO=${ROS_DISTRO}
 ENV P13_NAME=P13
+ENV RERUN_MODE=connect
+ENV RERUN_SERVER=127.0.0.1:9876
 ENV ROS_WORKSPACE=""
 
-CMD ["bash", "-lc", "source /opt/ros/${ROS_DISTRO}/setup.bash && if [ -n \"${ROS_WORKSPACE}\" ]; then source ${ROS_WORKSPACE}/install/setup.bash; fi && /app/build/p13_rerun_bridge"]
+CMD ["bash", "-lc", "source /opt/ros/${ROS_DISTRO}/setup.bash && if [ -n \"${ROS_WORKSPACE}\" ]; then source ${ROS_WORKSPACE}/install/setup.bash; fi && python3 /app/src/p13_rerun_bridge.py"]
