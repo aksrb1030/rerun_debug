@@ -72,10 +72,7 @@ class RerunBridge(Node):
                 self._create_subscription(config)
             except Exception as exc:  # pylint: disable=broad-except
                 self.get_logger().error(
-                    "Failed to subscribe %s (%s): %s",
-                    config.topic,
-                    config.type_string,
-                    exc,
+                    f"Failed to subscribe {config.topic} ({config.type_string}): {exc}"
                 )
 
     # ------------------------------------------------------------------
@@ -94,7 +91,9 @@ class RerunBridge(Node):
 
         subscription = self.create_subscription(msg_type, config.topic, callback, qos_profile)
         self._subscriptions.append(subscription)
-        self.get_logger().info("Subscribed to %s (%s)", config.topic, config.type_string)
+        self.get_logger().info(
+            f"Subscribed to {config.topic} ({config.type_string})"
+        )
 
     # ------------------------------------------------------------------
     # Message handling
@@ -351,9 +350,26 @@ def initialize_rerun(unit: str) -> None:
     try:
         if mode == "spawn":
             rr.spawn()
-        else:
-            server = os.environ.get("RERUN_SERVER", "127.0.0.1:9876")
+            return
+
+        if mode != "connect":
+            print(
+                f"Unknown RERUN_MODE '{mode}', defaulting to spawn.",
+                file=sys.stderr,
+            )
+            rr.spawn()
+            return
+
+        server = os.environ.get("RERUN_SERVER", "127.0.0.1:9876")
+        if hasattr(rr, "connect"):
             rr.connect(server)
+            return
+
+        print(
+            "rerun.connect is not available; falling back to rerun.spawn().",
+            file=sys.stderr,
+        )
+        rr.spawn()
     except Exception as exc:  # pylint: disable=broad-except
         print(f"Failed to initialize Rerun in {mode} mode: {exc}", file=sys.stderr)
 
