@@ -1,53 +1,32 @@
-# ROS 2 Topic Visualization with Rerun
+# ROS 2 Topic Visualization with Rerun (Python)
 
-`p13_rerun_bridge`는 C++로 작성된 ROS 2 노드로, P13 계열 차량에서 사용하는 주요 토픽을 [Rerun](https://www.rerun.io/) Viewer에 실시간으로 전달합니다. 센서 계열 메시지(`sensor_msgs`)는 3D 시각화로, 그 외 메시지는 시계열 그래프로 자동 분류합니다.
+`p13_rerun_bridge`는 Python으로 작성된 ROS 2 노드로, P13 계열 차량에서 사용하는 주요 토픽을 [Rerun](https://www.rerun.io/) Viewer에 실시간으로 전달합니다. 센서 계열 메시지는 3D 시각화로, 그 외 메시지는 시계열 그래프로 자동 분류합니다.
 
 `P13_NAME` 환경 변수로 차량 접두사(예: `P13`, `P13B`, ...)를 지정하면 `/P13/...`로 고정된 토픽 이름을 해당 값으로 치환합니다.
 
-## 빌드
+## 실행 방법
+
+### 로컬 환경에서 실행
+
+사전에 ROS 2와 Rerun Python SDK가 설치되어 있어야 합니다.
 
 ```bash
 source /opt/ros/humble/setup.bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build
+pip install --user rerun-sdk  # 최초 1회
+python3 src/p13_rerun_bridge.py
 ```
 
-빌드가 끝나면 실행 파일 `build/p13_rerun_bridge`가 생성됩니다.
+### Docker 이미지 빌드 및 실행
 
-## 실행
+ROS 2와 Rerun SDK가 포함된 컨테이너 이미지를 제공하는 Dockerfile을 아키텍처별로 제공합니다. 기본값은 Humble입니다.
 
-```bash
-source /opt/ros/humble/setup.bash
-./build/p13_rerun_bridge
-```
-
-환경 변수
-
-| 변수 | 설명 | 기본값 |
-| ---- | ---- | ------ |
-| `P13_NAME` | `/P13/` 접두사를 대체할 차량 이름 | `P13` |
-| `RERUN_MODE` | `connect`(기본) 또는 `spawn`. `connect`는 지정한 Viewer 서버에 접속 | `connect` |
-| `RERUN_SERVER` | `connect` 모드에서 사용할 Rerun 서버 주소 | `127.0.0.1:9876` |
-| `ROS_WORKSPACE` | Docker Compose에서 추가로 소싱할 ROS 2 오버레이 워크스페이스 경로 | 빈 문자열 |
-
-## 요구사항
-
-- ROS 2 Humble 이상 (노드 실행)
-- rerun C++ SDK (`rerun::rerun` 라이브러리)
-- Rerun Viewer (`rerun` CLI)
-
-## Docker 이미지 빌드 및 실행
-
-ROS 2와 Rerun SDK를 컨테이너에서 바로 사용할 수 있도록 아키텍처별 Dockerfile과 docker-compose 파일을 제공합니다. 두 Dockerfile은
-공식 `ros:${ROS_DISTRO}-ros-base` 이미지를 기반으로 하여 `/opt/ros/${ROS_DISTRO}` 환경이 즉시 구성된 상태에서 빌드가 진행됩니다.
-
-### AMD64 (x86_64)
+#### AMD64 (x86_64)
 
 ```bash
 docker build -f docker/Dockerfile.amd64 -t rerun-p13-bridge:amd64 .
 ```
 
-### ARM64 (aarch64)
+#### ARM64 (aarch64)
 
 ```bash
 docker build -f docker/Dockerfile.arm64 -t rerun-p13-bridge:arm64 .
@@ -67,21 +46,38 @@ ARM64 이미지는 태그만 `arm64`로 바꾸면 동일한 명령으로 실행�
 
 ### Docker Compose
 
-AMD64
+루트 경로에 `compose.yml`을 제공하여 손쉽게 실행할 수 있습니다.
 
 ```bash
-docker compose -f docker/docker-compose.amd64.yml up --build
+docker compose up --build
 ```
 
-ARM64
+필요하다면 다음과 같은 환경 변수를 `.env` 파일이나 명령행으로 전달할 수 있습니다.
 
-```bash
-docker compose -f docker/docker-compose.arm64.yml up --build
-```
+- `P13_NAME` (기본값 `P13`)
+- `RERUN_MODE` (`connect` 또는 `spawn`)
+- `RERUN_SERVER` (`connect` 모드에서 사용할 Rerun 서버 주소, 기본값 `127.0.0.1:9876`)
+- `ROS_WORKSPACE` (컨테이너에서 추가로 소싱할 오버레이 워크스페이스 경로)
+- `ROS_DISTRO` (기본값 `humble`)
+- `DOCKERFILE`/`DOCKER_PLATFORM` (필요시 다른 Dockerfile/플랫폼을 지정할 때 사용)
 
-Compose 실행 시 `P13_NAME`, `RERUN_MODE`, `RERUN_SERVER`, `ROS_WORKSPACE`, `ROS_DISTRO` 등의 환경 변수를 `.env` 파일이나 셸 변수로 전달해 동작을 조정할 수 있습니다.
+## 환경 변수 요약
 
-### Docker 컨테이너 안에서 Rerun Viewer 실행
+| 변수 | 설명 | 기본값 |
+| ---- | ---- | ------ |
+| `P13_NAME` | `/P13/` 접두사를 대체할 차량 이름 | `P13` |
+| `RERUN_MODE` | `connect`(기본) 또는 `spawn`. `connect`는 지정한 Viewer 서버에 접속 | `connect` |
+| `RERUN_SERVER` | `connect` 모드에서 사용할 Rerun 서버 주소 | `127.0.0.1:9876` |
+| `ROS_WORKSPACE` | Docker Compose에서 추가로 소싱할 ROS 2 오버레이 워크스페이스 경로 | 빈 문자열 |
+| `ROS_DISTRO` | Docker 이미지 빌드 및 실행 시 사용할 ROS 2 배포판 | `humble` |
+
+## 요구사항
+
+- ROS 2 Humble 이상 (노드 실행)
+- rerun Python SDK (`pip install rerun-sdk`)
+- Rerun Viewer (`rerun` CLI)
+
+## Docker 컨테이너 안에서 Rerun Viewer 실행
 
 GUI 애플리케이션인 Rerun Viewer를 Docker 안에서 실행하려면, 호스트의 디스플레이 서버에 접근할 수 있도록 몇 가지 추가 설정이 필요합니다.
 
