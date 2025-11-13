@@ -63,15 +63,6 @@ class SpecializedHandlers:
             entity_path(self._unit_name, topic, "sensors"),
             rr.Points3D(positions=[[float(msg.point.x), float(msg.point.y), float(msg.point.z)]]),
         )
-
-    # 이 메서드는 Odometry 메시지를 받아 자세, 위치 좌표, 속도 정보를 기록합니다.
-    def handle_odometry(self, topic: str, msg: Odometry) -> None:
-        self.handle_pose(topic, msg.pose.pose.position, msg.pose.pose.orientation)
-        base_path = entity_path(self._unit_name, topic, "graphs")
-        position_path = f"{base_path}/pose/position"
-        rr.log(f"{position_path}/x", rr.Scalar(float(msg.pose.pose.position.x)))
-        rr.log(f"{position_path}/y", rr.Scalar(float(msg.pose.pose.position.y)))
-        rr.log(f"{position_path}/z", rr.Scalar(float(msg.pose.pose.position.z)))
         rr.log(f"{base_path}/twist/linear/x", rr.Scalar(float(msg.twist.twist.linear.x)))
         rr.log(f"{base_path}/twist/linear/y", rr.Scalar(float(msg.twist.twist.linear.y)))
         rr.log(f"{base_path}/twist/linear/z", rr.Scalar(float(msg.twist.twist.linear.z)))

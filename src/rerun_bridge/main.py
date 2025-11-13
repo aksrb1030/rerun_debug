@@ -10,8 +10,6 @@ import sys
 
 from .bridge import RerunBridge
 from .config import get_rerun_mode, get_rerun_server, get_unit_name
-from .layout import send_default_blueprint
-
 
 # 이 함수는 Rerun SDK를 초기화하고 연결 또는 스폰 모드를 선택합니다.
 def initialize_rerun(unit: str, *, mode: Optional[str] = None, server: Optional[str] = None) -> None:
@@ -22,25 +20,12 @@ def initialize_rerun(unit: str, *, mode: Optional[str] = None, server: Optional[
     try:
         if chosen_mode == "spawn":
             rr.spawn()
-        elif chosen_mode == "connect":
-            if hasattr(rr, "connect"):
-                rr.connect(chosen_server)
-            else:
-                print(
-                    "rerun.connect is not available; falling back to rerun.spawn().",
-                    file=sys.stderr,
-                )
-                rr.spawn()
-        else:
+
             print(
                 f"Unknown RERUN_MODE '{chosen_mode}', defaulting to spawn.",
                 file=sys.stderr,
             )
             rr.spawn()
-    except Exception as exc:  # pylint: disable=broad-except
-        print(f"Failed to initialize Rerun in {chosen_mode} mode: {exc}", file=sys.stderr)
-
-    send_default_blueprint(unit)
 
 
 # 이 함수는 ROS 2 노드를 생성하고 스핀을 수행합니다.

@@ -10,9 +10,6 @@ from builtin_interfaces.msg import Time
 
 from .utils import time_to_seconds
 
-
-# 이 데이터 클래스는 평탄화된 결과를 수치와 텍스트로 분리해 저장합니다.
-@dataclass
 class FlattenResult:
     numeric: Dict[str, float]
     texts: List[str]

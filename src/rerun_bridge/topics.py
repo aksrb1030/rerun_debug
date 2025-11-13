@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from typing import Iterable, List, Optional
 
 
-# 이 데이터 클래스는 구독할 토픽의 이름, 메시지 타입, QoS를 보관합니다.
 @dataclass(frozen=True)
 class TopicConfig:
     topic: str
