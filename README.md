@@ -56,9 +56,9 @@ pip install rerun-sdk         # rerun SDK 설치 (최초 1회)
 
 3. 브리지를 실행합니다. 진입점 스크립트를 직접 호출하거나 모듈 실행 방식을 사용할 수 있습니다.
    ```bash
-   python3 src/p13_rerun_bridge.py
+   python3 src/p13_rerun_bridge.py [--map-path /absolute/path/to/map.glb]
    # 또는
-   python3 -m rerun_bridge.main
+   python3 -m rerun_bridge.main [--map-path /absolute/path/to/map.glb]
    ```
 
 4. 별도 터미널에서 Rerun Viewer를 실행해 ROS 데이터를 확인합니다.
@@ -67,6 +67,10 @@ pip install rerun-sdk         # rerun SDK 설치 (최초 1회)
    ```
 
 기본적으로 브리지는 `127.0.0.1:9876`에서 실행 중인 Viewer에 `connect` 모드로 연결합니다. 다른 포트나 호스트를 사용하려면 `RERUN_MODE`와 `RERUN_SERVER` 환경 변수를 조정하세요.
+
+### 3D 맵 표시 옵션
+
+`--map-path` 인자에 GLB 등 Rerun이 지원하는 3D 자산 파일 경로를 전달하면 뷰어에 고정된 맵 오브젝트를 함께 표시할 수 있습니다. 파일 경로는 절대경로 사용을 권장하며, 로드에 실패하면 표준 오류에 이유가 출력됩니다.
 
 ## 주요 환경 변수
 
