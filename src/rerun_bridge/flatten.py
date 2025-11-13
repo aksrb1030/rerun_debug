@@ -10,8 +10,6 @@ from builtin_interfaces.msg import Time
 
 from .utils import time_to_seconds
 
-
-@dataclass
 class FlattenResult:
     numeric: Dict[str, float]
     texts: List[str]

@@ -2,70 +2,84 @@
 
 `p13_rerun_bridge`는 Python으로 작성된 ROS 2 노드로, P13 계열 차량에서 사용하는 주요 토픽을 [Rerun](https://www.rerun.io/) Viewer에 실시간으로 전달합니다. 센서 계열 메시지는 3D 시각화로, 그 외 메시지는 시계열 그래프로 자동 분류합니다.
 
-`P13_NAME` 환경 변수로 차량 접두사(예: `P13`, `P13B`, ...)를 지정하면 `/P13/...`로 고정된 토픽 이름을 해당 값으로 치환합니다.
+## 프로젝트 구조
 
-## 실행 방법
+모듈화된 패키지 구조 덕분에 각 역할을 명확히 구분할 수 있습니다.
 
-### 사전 준비
+```
+src/
+├── p13_rerun_bridge.py   # 실행 진입점 (CLI)
+└── rerun_bridge/
+    ├── bridge.py         # ROS 2 노드 구현체
+    ├── config.py         # 환경 변수 기반 설정값 로직
+    ├── flatten.py        # 메시지 평탄화 유틸리티
+    ├── handlers.py       # 메시지 타입별 Rerun 로거
+    ├── main.py           # 초기화 및 실행 흐름
+    ├── topics.py         # 구독 토픽 정의
+    └── utils.py          # 공용 헬퍼
+```
 
-로컬 환경에서 노드를 실행하려면 다음 도구가 설치되어 있어야 합니다.
+각 함수에는 한국어 주석이 포함되어 있어 동작을 쉽게 파악할 수 있습니다. 기본 단위 이름(차량 접두사)은 환경 변수로 변경 가능합니다.
+
+## 실행 전 준비 사항
+
+로컬 환경에서 브리지를 실행하려면 다음 도구가 필요합니다.
 
 - ROS 2 Humble 이상
-- Python 3.10 이상 (ROS 2 기본 Python 버전과 동일하게 맞추는 것을 권장)
+- Python 3.10 이상 (ROS 2에서 사용하는 버전과 동일 권장)
 - rerun Python SDK (`pip install --user rerun-sdk`)
-- Rerun Viewer (`pip install --user rerun-sdk` 설치 시 함께 제공되는 `rerun` CLI)
+- Rerun Viewer (`pip install rerun-sdk` 설치 시 제공되는 `rerun` CLI)
 
-ROS 2 Humble이 설치되어 있다면 아래 명령으로 워크스페이스를 초기화하고 필요한 Python 패키지를 설치할 수 있습니다.
+권장되는 초기 설정 절차는 아래와 같습니다.
 
 ```bash
 source /opt/ros/humble/setup.bash
 python3 -m venv .venv         # 선택 사항이지만 권장
 source .venv/bin/activate     # 가상환경을 만들었다면 활성화
 pip install --upgrade pip
-pip install -r requirements.txt  # 필요 패키지를 명시했다면
 pip install rerun-sdk         # rerun SDK 설치 (최초 1회)
 ```
 
-> `requirements.txt`가 없다면 `pip install rerun-sdk`만 실행해도 충분합니다.
+프로젝트에서 추가 Python 의존성이 있다면 `pip install -r requirements.txt`로 설치하세요.
 
-### 노드 실행
+## 실행 방법
 
 1. ROS 2 환경을 소싱합니다.
    ```bash
    source /opt/ros/humble/setup.bash
    ```
 
-2. (선택) `P13_NAME` 환경 변수를 원하는 차량 이름으로 설정합니다.
+2. (선택) 차량 접두사를 지정합니다.
    ```bash
    export P13_NAME=P13B
    ```
 
-3. 브리지를 실행합니다.
+3. 브리지를 실행합니다. 진입점 스크립트를 직접 호출하거나 모듈 실행 방식을 사용할 수 있습니다.
    ```bash
    python3 src/p13_rerun_bridge.py
+   # 또는
+   python3 -m rerun_bridge.main
    ```
 
-4. 별도 터미널에서 Rerun Viewer를 실행하고, 브리지 노드가 전송하는 데이터를 확인합니다.
+4. 별도 터미널에서 Rerun Viewer를 실행해 ROS 데이터를 확인합니다.
    ```bash
    rerun
    ```
 
-Rerun Viewer는 기본적으로 `127.0.0.1:9876` 포트로 접속 대기합니다. 브리지 노드는 동일 포트로 데이터를 전송하므로 추가 설정 없이 시각화를 확인할 수 있습니다. 다른 포트를 사용하고 싶다면 `RERUN_SERVER` 환경 변수를 변경하세요.
+기본적으로 브리지는 `127.0.0.1:9876`에서 실행 중인 Viewer에 `connect` 모드로 연결합니다. 다른 포트나 호스트를 사용하려면 `RERUN_MODE`와 `RERUN_SERVER` 환경 변수를 조정하세요.
 
-## 환경 변수 요약
+## 주요 환경 변수
 
 | 변수 | 설명 | 기본값 |
 | ---- | ---- | ------ |
 | `P13_NAME` | `/P13/` 접두사를 대체할 차량 이름 | `P13` |
-| `RERUN_MODE` | `connect`(기본) 또는 `spawn`. `connect`는 지정한 Viewer 서버에 접속 | `connect` |
+| `RERUN_MODE` | `connect` 또는 `spawn`. `spawn`은 Viewer를 자동 실행 | `connect` |
 | `RERUN_SERVER` | `connect` 모드에서 사용할 Rerun 서버 주소 | `127.0.0.1:9876` |
-| `ROS_WORKSPACE` | 필요 시 추가로 소싱할 ROS 2 오버레이 워크스페이스 경로 | 빈 문자열 |
-| `ROS_DISTRO` | 사용할 ROS 2 배포판 | `humble` |
 
 ## 문제 해결
 
 - **Viewer가 자동으로 열리지 않는 경우**: `rerun` CLI가 PATH에 있는지 확인하고 별도 터미널에서 직접 실행합니다.
 - **ROS 토픽이 보이지 않을 때**: 브리지 노드와 동일한 ROS 2 도메인(`ROS_DOMAIN_ID`)을 사용하고 있는지 확인합니다.
-- **원격 머신에서 Viewer를 실행할 때**: `RERUN_SERVER` 환경 변수를 Viewer가 실행 중인 호스트의 주소로 바꿉니다. 예) `export RERUN_SERVER=192.168.0.10:9876`
+- **원격 머신에서 Viewer를 실행할 때**: `RERUN_SERVER`를 Viewer가 실행 중인 호스트 주소로 바꿉니다. 예) `export RERUN_SERVER=192.168.0.10:9876`
 
-Docker 관련 파일과 스크립트는 더 이상 제공하지 않으며, 모든 작업은 로컬 환경에서 직접 수행합니다.
+Docker 관련 파일과 스크립트는 제공하지 않으므로 로컬 환경에서 직접 실행하는 구성을 권장합니다.
