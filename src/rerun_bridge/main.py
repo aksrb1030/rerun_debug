@@ -78,3 +78,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     initialize_rerun(unit, map_path=args.map_path)
     run_bridge(unit, ros_args)
     return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
